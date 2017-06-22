@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+from sklearn.preprocessing import scale
 
 
 def process_data(clinical_filename, exp_filename, survival_filename, geneset, data_config):
@@ -7,16 +9,34 @@ def process_data(clinical_filename, exp_filename, survival_filename, geneset, da
         exp = np.loadtxt(exp_filename, delimiter='\t', skiprows=1)
         if geneset is not 'full':
             exp = filter_genes(exp, geneset)
-        data = exp
-    if 'c' in data_config:
+        data = preprocess_exp(exp)
+    if 'c' in data_config and 'r' not in data_config:
         clinical = np.loadtxt(clinical_filename, delimiter='\t', skiprows=1)
         if data is None:
             data = clinical
         else:
             data = np.concatenate((data, clinical), 1)
+    if 'r' in data_config:
+        clinical = preprocess_clinical(np.loadtxt(clinical_filename, delimiter='\t', skiprows=1))
+        if data is None:
+            data = clinical[:, 2:]
+        else:
+            data = np.concatenate((data, clinical[:, 2:]), 1)
+
     survival = np.loadtxt(survival_filename, delimiter='\t')
 
     return data, survival
+
+
+def preprocess_exp(exp):
+    exp = np.log2(exp+1.0)
+    exp = scale(exp)
+    return exp
+
+
+def preprocess_clinical(clinical):
+    clinical = scale(clinical)
+    return clinical
 
 
 def filter_genes(exp, geneset):
@@ -24,3 +44,17 @@ def filter_genes(exp, geneset):
         indices = np.loadtxt('../data/pam50.txt', delimiter=',', dtype='int')
         exp = exp[:, indices]
     return exp
+
+
+def filter_samples_to_subtype(data, survival, subtype_filename):
+    subtype = pd.read_csv(subtype_filename, sep='\t')
+    subtype_ids_long = subtype['Sample'].values.tolist()
+    subtype_ids = [item[:12] for item in subtype_ids_long]
+    data_ids = [item[0] for item in pd.read_csv('../data/bgam_subject_ids.txt').values.tolist()]
+    overlapping_ids = [id for id in data_ids if id in subtype_ids]
+    data_indices = [data_ids.index(id) for id in overlapping_ids]
+    subtype_indices = [subtype_ids.index(id) for id in overlapping_ids]
+    subtypes = subtype.iloc[subtype_indices]['PAM50'].values.tolist()
+    subtype_map = {'Normal': 0, 'LumA': 1, 'LumB': 2, 'Basal': 3, 'Her2': 4}
+    subtypes_num = [subtype_map[item] for item in subtypes]
+    return data[data_indices, :], survival[data_indices], subtypes_num
