@@ -35,3 +35,8 @@ def train_logreg(data, labels, params):
     model = LogisticRegression(penalty=regularization_type, C=penalty, solver='lbfgs', multi_class='multinomial')  # multi_class option enforces softmax approach
     model.fit(data, labels)
     return model
+
+def train_intermediate(data, labels, params):
+    intermediate_labels = data[:, -8:]
+    import pdb; pdb.set_trace()
+

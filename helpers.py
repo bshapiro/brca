@@ -1,23 +1,27 @@
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import scale
+import itertools
 
 
-def process_data(clinical_filename, exp_filename, survival_filename, geneset, data_config):
+def process_data(clinical_filename, exp_filename, survival_filename, geneset, data_config, model_type):
     data = None
     if 'e' in data_config:
         exp = np.loadtxt(exp_filename, delimiter='\t', skiprows=1)
         if geneset is not 'full':
             exp = filter_genes(exp, geneset)
         data = preprocess_exp(exp)
-    if 'c' in data_config and 'r' not in data_config:
-        clinical = np.loadtxt(clinical_filename, delimiter='\t', skiprows=1)
-        if data is None:
-            data = clinical
-        else:
-            data = np.concatenate((data, clinical), 1)
-    if 'r' in data_config:
+    if 'c' in data_config:
         clinical = preprocess_clinical(np.loadtxt(clinical_filename, delimiter='\t', skiprows=1))
+        if data is None:
+            data = clinical[:, 0:2]
+        else:
+            data = np.concatenate((data, clinical[:, 0:2]), 1)
+    if 'r' in data_config:
+        if model_type != 'intermediate':
+            clinical = preprocess_clinical(np.loadtxt(clinical_filename, delimiter='\t', skiprows=1))
+        else:
+            clinical = np.loadtxt(clinical_filename, delimiter='\t', skiprows=1)  # don't scale the data if it's intermediate
         if data is None:
             data = clinical[:, 2:]
         else:
@@ -58,3 +62,19 @@ def filter_samples_to_subtype(data, survival, subtype_filename):
     subtype_map = {'Normal': 0, 'LumA': 1, 'LumB': 2, 'Basal': 3, 'Her2': 4}
     subtypes_num = [subtype_map[item] for item in subtypes]
     return data[data_indices, :], survival[data_indices], subtypes_num
+
+
+def partition(lst, n):
+    division = len(lst) / float(n)
+    return [lst[int(round(division * i)): int(round(division * (i + 1)))] for i in xrange(n)]
+
+
+def construct_receptor_labels(receptor):  # WIP
+    labels = itertools.product([0, 1, 2], [0, 1, 2])
+    label_dict = {}
+    for label in labels:
+        label_dict[label] = labels.index(label)
+    label_vector = []
+    for row in receptor:
+        label_vector.append(label_dict[row])
+    return np.asarray(label_vector)
