@@ -1,6 +1,7 @@
 from helpers import *
 from optparse import OptionParser
 from sklearn.model_selection import KFold
+from sklearn.metrics import recall_score, precision_score
 from stats import *
 import itertools
 import os
@@ -67,11 +68,13 @@ def nested_cross_validate(data, phenotype, model_type, params, results_f):
 
 
 def cross_validate(data, phenotype, model_type, params, results_f):
-    k = 10
+    k = 5
     shuffled_indices = range(data.shape[0])
     random.shuffle(shuffled_indices)
     fold_indices = partition(shuffled_indices, k)
     fold_scores = []
+    fold_precisions = []
+    fold_recalls = []
     for fold in range(0, k):
         test = fold_indices[fold]
         tune = fold_indices[(fold + 1) % k]
@@ -96,10 +99,17 @@ def cross_validate(data, phenotype, model_type, params, results_f):
         results_f.write('Best params: ' + str(best_param_set) + '\n')
         model = train_model(model_type, data_train, phenotype_train, best_param_set)
         fold_score = model.score(data_test, phenotype_test)
+        predictions = model.predict(data_test)
+        fold_precisions.append(precision_score(phenotype_test, predictions))
+        fold_recalls.append(recall_score(phenotype_test, predictions))
         fold_scores.append(fold_score)
-        results_f.write('Score for best params on this fold: ' + str(fold_score))
+        results_f.write('Score for best params on this fold: ' + str(fold_score) + '\n')
     average_score_over_folds = np.mean(fold_scores)
+    average_precision_over_folds = np.mean(fold_precisions)
+    average_recall_over_folds = np.mean(fold_recalls)
     results_f.write('Average score over folds: ' + str(average_score_over_folds) + '\n')
+    results_f.write('Average precision over folds: ' + str(average_precision_over_folds) + '\n')
+    results_f.write('Average recall over folds: ' + str(average_recall_over_folds) + '\n')
 
 
 def cross_validate_intermediate(data, phenotype, model_type, params, results_f):
@@ -144,7 +154,7 @@ def cross_validate_intermediate(data, phenotype, model_type, params, results_f):
         scores_train = logreg_model.predict_proba(data_train)
         svm_model = train_model('svm', scores_train, phenotype_train, best_param_set[1])
         scores_test = logreg_model.predict_proba(data_test)
-        fold_score = model.score(scores_test, phenotype_test)
+        fold_score = svm_model.score(scores_test, phenotype_test)
         fold_scores.append(fold_score)
         results_f.write('Score for best params on this fold: ' + str(fold_score))
     average_score_over_folds = np.mean(fold_scores)
@@ -154,12 +164,14 @@ def cross_validate_intermediate(data, phenotype, model_type, params, results_f):
 if __name__ == "__main__":
     params = {'knn': [[1], [2], [4], [8], [16], [32]],
               'svm': zip(['rbf']*144, list(itertools.product([0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000], [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000]))),
-              'logreg': zip(['l2']*12, [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000]*1)}
+              'logreg': zip(['l2']*12, [0.000000000000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 100000000000]*1)}
     params['intermediate'] = list(itertools.product(params['logreg'], params['svm']))
     results_dir = '../results/baselines/' + options.model + '/' + options.data_config + '/'
     if options.model == 'intermediate':
         if 'r' not in options.data_config:
             sys.exit("Can't run intermediate classification without including receptor status in the data.")
+    if options.receptor_to_subtype:
+        results_dir += 'receptor_to_subtype/'
     if 'e' in options.data_config:
         results_dir += options.geneset
     try:
@@ -169,10 +181,10 @@ if __name__ == "__main__":
     data, phenotype = process_data(options.clinical_file, options.exp_file,
                                    options.phenotype_file, options.geneset, options.data_config, options.model)
 
-    if options.use_subtypes:
+    if options.use_subtypes or options.receptor_to_subtype:
         data, phenotype, subtypes = filter_samples_to_subtype(data, phenotype, options.subtype_file)
-        if options.receptor_to_subtype:
-            phenotype = subtypes
+    if options.receptor_to_subtype:
+        phenotype = subtypes
     results_filename = results_dir + "/results.txt"
     results_f = open(results_filename, 'w')
     model_type = options.model

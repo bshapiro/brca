@@ -61,7 +61,7 @@ def filter_samples_to_subtype(data, survival, subtype_filename):
     subtypes = subtype.iloc[subtype_indices]['PAM50'].values.tolist()
     subtype_map = {'Normal': 0, 'LumA': 1, 'LumB': 2, 'Basal': 3, 'Her2': 4}
     subtypes_num = [subtype_map[item] for item in subtypes]
-    return data[data_indices, :], survival[data_indices], subtypes_num
+    return data[data_indices, :], survival[data_indices], np.asarray(subtypes_num)
 
 
 def partition(lst, n):
