@@ -100,8 +100,9 @@ def cross_validate(data, phenotype, model_type, params, results_f):
         model = train_model(model_type, data_train, phenotype_train, best_param_set)
         fold_score = model.score(data_test, phenotype_test)
         predictions = model.predict(data_test)
-        fold_precisions.append(precision_score(phenotype_test, predictions))
-        fold_recalls.append(recall_score(phenotype_test, predictions))
+        if max(phenotype) == 1:  # only for binary tests
+            fold_precisions.append(precision_score(phenotype_test, predictions))
+            fold_recalls.append(recall_score(phenotype_test, predictions))
         fold_scores.append(fold_score)
         results_f.write('Score for best params on this fold: ' + str(fold_score) + '\n')
     average_score_over_folds = np.mean(fold_scores)
