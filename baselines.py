@@ -17,7 +17,7 @@ parser.add_option("--phenotype", dest="phenotype_file", default="../data/bgam_su
 parser.add_option("--subtype", dest="subtype_file", default="../data/subtypes.txt",
                   help="Location of subtype data")
 parser.add_option("-d", "--data", dest="data_config", default="e",
-                  help="Training configuration to use; combinations of emcr.")
+                  help="Training configuration to use; combinations of emcrs.")
 parser.add_option("-m", "--model", dest="model", default="svm",
                   help="Model to use: knn, logreg, svm, or intermediate")
 parser.add_option("-g", "--geneset", dest="geneset", default='full',
@@ -162,14 +162,13 @@ def cross_validate_intermediate(data, phenotype, model_type, params, results_f):
 
 
 if __name__ == "__main__":
-    params = {'knn': [[1], [2], [4], [8], [16], [32]],
-              'svm': zip(['rbf']*144, list(itertools.product([0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000], [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000]))),
-              'logreg': zip(['l2']*12, [0.000000000000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 100000000000]*1)}
-    params['intermediate'] = list(itertools.product(params['logreg'], params['svm']))
-    results_dir = '../results/baselines/' + options.model + '/' + options.data_config + '/'
+    ############### EXCEPTIONS ################
     if options.model == 'intermediate':
         if 'r' not in options.data_config:
             sys.exit("Can't run intermediate classification without including receptor status in the data.")
+
+    ############### FILE CONFIGURATION ################
+    results_dir = '../results/baselines/' + options.model + '/' + options.data_config + '/'
     if options.receptor_to_subtype:
         results_dir += 'receptor_to_subtype/'
     if 'e' in options.data_config:
@@ -178,13 +177,26 @@ if __name__ == "__main__":
         os.makedirs(results_dir)
     except:
         print "Directory already exists."
+
+    ########## PROCESS & FILTER  DATA ##############
     data, phenotype = process_data(options.clinical_file, options.exp_file,
                                    options.phenotype_file, options.geneset, options.data_config, options.model)
 
-    if options.use_subtypes or options.receptor_to_subtype:
+    if options.use_subtypes or options.receptor_to_subtype or 's' in options.data_config:
         data, phenotype, subtypes = filter_samples_to_subtype(data, phenotype, options.subtype_file)
+        if 's' in options.data_config:
+            data = np.concatenate(data, subtypes, 1)
+
     if options.receptor_to_subtype:
         phenotype = subtypes
+
+    ########## PARAMETER SETUP ##############
+    params = {'knn': [[1], [2], [4], [8], [16], [32]],
+              'svm': zip(['rbf']*144, list(itertools.product([0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000], [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000]))),
+              'logreg': zip(['l2']*12, [0.000000000000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 100000000000]*1)}
+    params['intermediate'] = list(itertools.product(params['logreg'], params['svm']))
+
+    ########## RUN TASKS ##############
     results_filename = results_dir + "/results.txt"
     results_f = open(results_filename, 'w')
     model_type = options.model
