@@ -1,7 +1,11 @@
-import sys
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
+from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC
+import numpy as np
+import sys
 
 
 def train_model(model_name, data, labels, params):
@@ -25,7 +29,7 @@ def train_knn(data, labels, params):
 
 def train_svm(data, labels, params):
     kernel, penalty, gamma = params[0], params[1][0], params[1][1]
-    model = SVC(kernel=kernel, C=penalty, gamma=gamma)
+    model = SVC(kernel=kernel, C=penalty, gamma=gamma, class_weight='balanced')
     model.fit(data, labels)
     return model
 
@@ -36,7 +40,27 @@ def train_logreg(data, labels, params):
     model.fit(data, labels)
     return model
 
-def train_intermediate(data, labels, params):
-    intermediate_labels = data[:, -8:]
-    import pdb; pdb.set_trace()
 
+def train_nn(data, labels, params):
+    alpha = params[0]
+    model = MLPClassifier(hidden_layer_sizes=(256), activation='relu', alpha=alpha)
+    model.fit(data, labels)
+    return model
+
+
+def reduction(data, phenotype, data_type):
+    if data_type == 'exp':
+        PCA_model = PCA(n_components=50)
+        exp_pca = PCA_model.fit_transform(data)
+        LDA_model = LDA()
+        exp_lda = LDA_model.fit_transform(data, phenotype)
+        exp_reduced = np.concatenate((exp_pca, exp_lda), 1)
+        return exp_reduced
+    elif data_type == 'methylation':
+        pass
+    else:
+        return data
+
+
+def lda(data, labels, params):
+    pass
