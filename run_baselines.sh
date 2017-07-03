@@ -1,5 +1,5 @@
 
-for model in svm knn neural
+for model in svm knn nn
 do
 
 python baselines.py -m $model --data ec

@@ -67,7 +67,6 @@ def filter_genes(exp, geneset, genes):
                 biotypes.append(biotype)
             biotypes = np.asarray(biotypes)
             indices = np.where(biotypes == u'protein_coding')[0]
-        import pdb; pdb.set_trace()
         exp = exp[:, indices]
     return exp
 

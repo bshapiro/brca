@@ -38,7 +38,7 @@ def train_svm(data, labels, params):
 
 def train_logreg(data, labels, params):
     regularization_type, penalty = params[0], params[1]
-    model = LogisticRegression(penalty=regularization_type, C=penalty, solver='lbfgs', multi_class='multinomial')  # multi_class option enforces softmax approach
+    model = LogisticRegression(penalty=regularization_type, C=penalty, solver='lbfgs', multi_class='multinomial', class_weight='balanced')  # multi_class option enforces softmax approach
     model.fit(data, labels)
     return model
 
