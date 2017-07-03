@@ -15,6 +15,8 @@ def train_model(model_name, data, labels, params):
         model = train_svm(data, labels, params)
     elif model_name == 'logreg':
         model = train_logreg(data, labels, params)
+    elif model_name == 'nn':
+        model = train_nn(data, labels, params)
     else:
         sys.exit('Model does not exist.')
     return model

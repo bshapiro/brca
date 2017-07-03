@@ -19,7 +19,7 @@ parser.add_option("--subtype", dest="subtype_file", default="../data/subtypes.tx
 parser.add_option("-d", "--data", dest="data_config", default="e",
                   help="Training configuration to use; combinations of emcrs.")
 parser.add_option("-m", "--model", dest="model", default="svm",
-                  help="Model to use: knn, logreg, svm, or intermediate")
+                  help="Model to use: knn, logreg, nn, svm, or intermediate")
 parser.add_option("-g", "--geneset", dest="geneset", default='full',
                   help="Geneset to use")
 parser.add_option("--use-subtypes", dest="use_subtypes", action="store_true", default=False,
@@ -185,6 +185,8 @@ if __name__ == "__main__":
     results_dir = '../results/baselines/' + options.model + '/' + options.data_config + '/'
     if options.receptor_to_subtype:
         results_dir += 'receptor_to_subtype/'
+    if options.do_reduction:
+        results_dir += 'reduced/'
     if 'e' in options.data_config:
         results_dir += options.geneset
     try:
@@ -210,7 +212,8 @@ if __name__ == "__main__":
     ########## PARAMETER SETUP ##############
     params = {'knn': [[1], [2], [4], [8], [16], [32]],
               'svm': zip(['rbf']*144, list(itertools.product([0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000], [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000]))),
-              'logreg': zip(['l2']*12, [0.000000000000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 100000000000]*1)}
+              'logreg': zip(['l2']*12, [0.000000000000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 100000000000]*1),
+              'nn': [[i] for i in [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000]]}
     params['intermediate'] = list(itertools.product(params['logreg'], params['svm']))
 
     ########## RUN TASKS ##############
