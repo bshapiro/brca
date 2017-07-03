@@ -62,7 +62,3 @@ def reduction(data, phenotype, data_type):
         pass
     else:
         return data
-
-
-def lda(data, labels, params):
-    pass
