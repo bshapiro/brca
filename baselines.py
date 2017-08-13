@@ -28,6 +28,8 @@ parser.add_option("--receptor-to-subtype", action="store_true", default=False,
                   dest="receptor_to_subtype", help="Classify subtypes from receptor status.")
 parser.add_option("-r", "--reduce", dest="do_reduction", action="store_true", default=False,
                   help="Perform dimensionality reduction?")
+parser.add_option("--metric", dest="metric", default="accuracy",
+                  help="Metric to use during cross validation.")
 (options, args) = parser.parse_args()
 
 
@@ -69,7 +71,7 @@ def nested_cross_validate(data, phenotype, model_type, params, results_f):
     results_f.write('Average score over outer loops: ' + str(np.mean(outer_scores)) + '\n')
 
 
-def cross_validate(data, phenotype, model_type, params, results_f):
+def cross_validate(data, phenotype, model_type, params, results_f, metric):
     k = 5
     shuffled_indices = range(data.shape[0])
     random.shuffle(shuffled_indices)
@@ -93,8 +95,11 @@ def cross_validate(data, phenotype, model_type, params, results_f):
         results_f.write('******************************' + '\n')
         for param_set in params:
             model = train_model(model_type, data_train, phenotype_train, param_set)
-            tmp_scores = model.decision_function(data_tune)
-            score = roc_auc_score(phenotype_tune, tmp_scores)
+            if metric == 'auc':
+                tmp_scores = model.decision_function(data_tune)
+                score = roc_auc_score(phenotype_tune, tmp_scores)
+            elif metric == 'accuracy':
+                score = model.score(data_tune, phentype_tune)
             results_f.write('Params: ' + str(param_set) + ', score: ' + str(score) + '\n')
             param_scores.append(score)
         best_param_index = param_scores.index(max(param_scores))
@@ -222,6 +227,6 @@ if __name__ == "__main__":
     results_f = open(results_filename, 'w')
     model_type = options.model
     if model_type != 'intermediate':
-        cross_validate(data, phenotype, model_type, params[model_type], results_f)
+        cross_validate(data, phenotype, model_type, params[model_type], results_f, options.metric)
     else:
         cross_validate_intermediate(data, phenotype, model_type, params[model_type], results_f)
