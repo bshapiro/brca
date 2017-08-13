@@ -99,7 +99,7 @@ def cross_validate(data, phenotype, model_type, params, results_f, metric):
                 tmp_scores = model.decision_function(data_tune)
                 score = roc_auc_score(phenotype_tune, tmp_scores)
             elif metric == 'accuracy':
-                score = model.score(data_tune, phentype_tune)
+                score = model.score(data_tune, phenotype_tune)
             results_f.write('Params: ' + str(param_set) + ', score: ' + str(score) + '\n')
             param_scores.append(score)
         best_param_index = param_scores.index(max(param_scores))
