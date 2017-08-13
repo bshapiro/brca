@@ -1,7 +1,7 @@
 from helpers import *
 from optparse import OptionParser
 from sklearn.model_selection import KFold
-from sklearn.metrics import recall_score, precision_score
+from sklearn.metrics import recall_score, precision_score, roc_auc_score
 from stats import *
 import itertools
 import os
@@ -93,7 +93,8 @@ def cross_validate(data, phenotype, model_type, params, results_f):
         results_f.write('******************************' + '\n')
         for param_set in params:
             model = train_model(model_type, data_train, phenotype_train, param_set)
-            score = model.score(data_tune, phenotype_tune)
+            tmp_scores = model.decision_function(data_tune)
+            score = roc_auc_score(phenotype_tune, tmp_scores)
             results_f.write('Params: ' + str(param_set) + ', score: ' + str(score) + '\n')
             param_scores.append(score)
         best_param_index = param_scores.index(max(param_scores))

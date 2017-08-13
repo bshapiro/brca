@@ -19,18 +19,18 @@ def process_data(clinical_filename, exp_filename, survival_filename, geneset, da
     if 'c' in data_config:
         clinical = preprocess_clinical(np.loadtxt(clinical_filename, delimiter='\t', skiprows=1))
         if data is None:
-            data = clinical[:, 0:2]
+            data = clinical[:, 0:4]
         else:
-            data = np.concatenate((data, clinical[:, 0:2]), 1)
+            data = np.concatenate((data, clinical[:, 0:4]), 1)
     if 'r' in data_config:
         if model_type != 'intermediate':
             clinical = preprocess_clinical(np.loadtxt(clinical_filename, delimiter='\t', skiprows=1))
         else:
             clinical = np.loadtxt(clinical_filename, delimiter='\t', skiprows=1)  # don't scale the data if it's intermediate
         if data is None:
-            data = clinical[:, 2:]
+            data = clinical[:, 4:]
         else:
-            data = np.concatenate((data, clinical[:, 2:]), 1)
+            data = np.concatenate((data, clinical[:, 4:]), 1)
 
     return data, survival
 
@@ -75,7 +75,7 @@ def filter_samples_to_subtype(data, survival, subtype_filename):
     subtype = pd.read_csv(subtype_filename, sep='\t')
     subtype_ids_long = subtype['Sample'].values.tolist()
     subtype_ids = [item[:12] for item in subtype_ids_long]
-    data_ids = [item[0] for item in pd.read_csv('../data/bgam_subject_ids.txt').values.tolist()]
+    data_ids = [item[0] for item in pd.read_csv('../data/bgam_ids_clinical.txt').values.tolist()]
     overlapping_ids = [id for id in data_ids if id in subtype_ids]
     data_indices = [data_ids.index(id) for id in overlapping_ids]
     subtype_indices = [subtype_ids.index(id) for id in overlapping_ids]
