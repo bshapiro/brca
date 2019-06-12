@@ -6,16 +6,17 @@ from stats import reduction
 from pyensembl import EnsemblRelease
 
 
-def process_data(clinical_filename, exp_filename, survival_filename, geneset, data_config, do_reduction, model_type):
+def process_data(clinical_filename, exp_filename, survival_filename, event_time_filename, geneset, data_config, do_reduction, model_type):
     data = None
     survival = np.loadtxt(survival_filename, delimiter='\t')
+    event_time = np.loadtxt(event_time_filename, delimiter='\t')
     genes = [gene_name.split('.')[0] for gene_name in open(exp_filename).readline()[:-1].split('\t')]
 
     if 'e' in data_config:
         exp = np.loadtxt(exp_filename, delimiter='\t', skiprows=1)
         if geneset is not 'full':
             exp = filter_genes(exp, geneset, genes)
-        data = preprocess_exp(exp, survival, reduction)
+        data = preprocess_exp(exp, survival, do_reduction)
     if 'c' in data_config:
         clinical = preprocess_clinical(np.loadtxt(clinical_filename, delimiter='\t', skiprows=1))
         if data is None:
@@ -31,16 +32,16 @@ def process_data(clinical_filename, exp_filename, survival_filename, geneset, da
             data = clinical[:, 4:]
         else:
             data = np.concatenate((data, clinical[:, 4:]), 1)
-
-    return data, survival
+    import pdb; pdb.set_trace()
+    return data, survival, event_time
 
 
 def preprocess_exp(exp, survival, do_reduction):
     exp = np.log2(exp+1.0)
     exp = scale(exp)
     if do_reduction:
-        exp_reduced = reduction(exp, survival, 'exp')
-    return exp_reduced
+        exp = reduction(exp, survival, 'exp')
+    return exp
 
 
 def preprocess_clinical(clinical):
@@ -101,3 +102,53 @@ def construct_receptor_labels(receptor):  # WIP
     for row in receptor:
         label_vector.append(label_dict[row])
     return np.asarray(label_vector)
+
+
+def longer_survival(prediction1, prediction2, classification=True):
+    if classification:
+        return prediction1 > prediction2
+    else:
+        return prediction1 < prediction2
+
+
+def compute_ci(survival, survival_times, predictions, classification=True):
+    indices = range(len(survival_times))
+    pairs = itertools.combinations(indices, 2)
+
+    concordance = 0
+    permissible = 0
+    for pair in pairs:
+        index1 = pair[0]
+        index2 = pair[1]
+        survival_time1 = survival_times[index1]
+        survival_time2 = survival_times[index2]
+        death1 = survival[index1]
+        death2 = survival[index2]
+        prediction1 = predictions[index1]
+        prediction2 = predictions[index2]
+        cur_survival_times = [survival_time1, survival_time2]
+        cur_deaths = [death1, death2]
+        cur_predictions = [prediction1, prediction2]
+        shortest_index = cur_survival_times.index(min(cur_survival_times))
+        longest_index = [item for item in range(2) if item != shortest_index][0]
+        if cur_deaths[shortest_index] == 0:
+            continue  # omit
+        if (survival_time1 == survival_time2) and (death1 == 0) and (death2 == 0):
+            continue  # omit
+        permissible += 1
+        if survival_time1 != survival_time2:
+            if longer_survival(cur_predictions[longest_index], cur_predictions[shortest_index], classification):
+                concordance += 1
+            else:
+                concordance += 0.5
+        if survival_time1 == survival_time2 and death1 == 1 and death2 == 1:
+            if prediction1 == prediction2:
+                concordance += 1
+            else:
+                concordance += 0.5
+        elif survival_time1 == survival_time2:
+            if longer_survival(cur_predictions[cur_deaths.index(0)], cur_predictions[cur_deaths.index(1)]):
+                concordance += 1
+            else:
+                concordance += 0.5
+    return float(concordance) / float(permissible)

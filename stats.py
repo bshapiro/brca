@@ -32,8 +32,9 @@ def train_knn(data, labels, params):
 def train_svm(data, labels, params):
     class_weight = float(len(data)) / (2*np.bincount(np.asarray(labels, dtype='int')))  # balanced
     class_weight[1] = 10*class_weight[1]  # adjust by factor of 2
+    class_weight_dict = dict(zip([0, 1], list(class_weight)))
     kernel, penalty, gamma = params[0], params[1][0], params[1][1]
-    model = SVC(kernel=kernel, C=penalty, gamma=gamma, class_weight=class_weight)
+    model = SVC(kernel=kernel, C=penalty, gamma=gamma, class_weight=class_weight_dict)
     model.fit(data, labels)
     return model
 
